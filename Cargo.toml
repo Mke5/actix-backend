@@ -1,0 +1,36 @@
+[package]
+name = "actix"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+actix-cors = "0.7"
+actix-web = "4"
+argon2 = "0.5"
+config = "0.15"
+async-trait = "0.1"
+chrono = { version = "0.4", features = ["serde"] }
+dotenv = "0.15"
+futures-util = "0.3"
+jsonwebtoken = "9"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sqlx = { version = "0.8.6", features = [
+  "runtime-tokio-rustls",
+  "postgres",
+  "chrono",
+  "uuid"
+] }
+tracing = "0.1"
+tracing-futures = "0.2"
+tracing-log = { version = "0.1", features = ["env_logger"] }
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+utoipa = { version = "4", features = ["actix_extras", "chrono"] }
+utoipa-rapidoc = { version = "2", features = ["actix-web"] }
+utoipa-redoc = { version = "2", features = ["actix-web"] }
+utoipa-swagger-ui = { version = "5", features = ["actix-web"] }
+uuid = { version = "1", features = ["serde", "v4"] }
+validator = { version = "0.16", features = ["derive"] }
+eyre = "0.6"
+color-eyre = "0.6"
+sqlx = { version = "0.8.6", features = ["runtime-tokio", "tls-rustls", "postgres", "chrono", "uuid", "json"] }
