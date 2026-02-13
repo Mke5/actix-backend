@@ -7,9 +7,9 @@ use eyre::WrapErr;
 use sqlx::{Error as SqlxError, PgPool};
 use uuid::Uuid;
 
-use crate::config::config;
 use crate::config::config::Config;
 use crate::models::otp_codes::OtpCode;
+use crate::service::email_service::EmailService;
 use crate::{
     config::crypto::CryptoService,
     models::user::{NewUser, User},
@@ -19,6 +19,7 @@ pub struct UserService {
     pub pool: PgPool,
     pub crypto: CryptoService,
     pub platform_name: String,
+    pub email_service: EmailService,
 }
 
 impl UserService {
@@ -221,7 +222,7 @@ impl UserService {
         Ok(())
     }
 
-    pub async fn send_otp(&self, name: &str, email: &str, template: &str) -> Result<()> {
+    pub async fn send_otp(&self, name: &str, email: &str) -> Result<()> {
         let email = email.trim().to_lowercase();
         // Check OTP restrictions and track requests
         self.check_otp_restrictions(&email).await?;
@@ -263,6 +264,13 @@ impl UserService {
             "otp": otp_code,
             "platformName": self.platform_name
         });
+
+        self.email_service.send_email(
+            &email,
+            "Verify Your Email",
+            "./templates/otp_email.html",
+            &template_data,
+        );
 
         tx.commit().await?;
 

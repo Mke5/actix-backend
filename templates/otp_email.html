@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <title>OTP Verification</title>
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <style>
+            body {
+                margin: 0;
+                padding: 0;
+                background: #f4f6f8;
+                font-family: Arial, Helvetica, sans-serif;
+                text-align: center;
+            }
+            .container {
+                width: 100%;
+                padding: 40px 0;
+            }
+            .card {
+                max-width: 600px;
+                margin: 0 auto;
+                background: #ffffff;
+                padding: 40px 30px;
+                border-radius: 8px;
+                box-sizing: border-box;
+            }
+            .otp-box {
+                display: inline-block;
+                padding: 18px 26px;
+                font-size: 26px;
+                font-weight: bold;
+                letter-spacing: 4px;
+                background: #f1f5f9;
+                border: 1px solid #e2e8f0;
+                border-radius: 6px;
+                margin: 20px auto;
+            }
+            p {
+                margin: 0 0 18px;
+                font-size: 15px;
+                line-height: 1.5;
+                color: #333;
+            }
+            .footer {
+                margin-top: 25px;
+                font-size: 13px;
+                color: #666;
+                line-height: 1.5;
+            }
+        </style>
+    </head>
+
+    <body>
+        <div class="container">
+            <div class="card">
+                <h2
+                    style="
+                        margin-top: 0;
+                        margin-bottom: 20px;
+                        font-size: 22px;
+                        font-weight: 700;
+                    "
+                >
+                    Welcome {{name}}
+                </h2>
+
+                <p>
+                    Thank you for registering with
+                    <strong>{{platformName}}</strong>.
+                </p>
+                <p>To activate your account, please use the following OTP:</p>
+
+                <div class="otp-box">{{otp}}</div>
+
+                <p>This code expires in <strong>5 minutes</strong>.</p>
+                <p>If you didn’t request this, please ignore this email.</p>
+
+                <div class="footer">
+                    You're receiving this email because you have an account in
+                    <strong>{{platformName}}</strong>.<br />
+                    If you’re not sure why you're receiving this, please reply
+                    to this email<br />
+                    or contact our support team.
+                </div>
+            </div>
+        </div>
+    </body>
+</html>

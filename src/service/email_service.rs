@@ -2,7 +2,7 @@ use std::fs;
 
 use color_eyre::Result;
 use eyre::Ok;
-use lettre::{SmtpTransport, transport::smtp::authentication::Credentials};
+use lettre::{SmtpTransport, Transport, transport::smtp::authentication::Credentials};
 use serde_json::Value;
 
 pub struct EmailService {
@@ -39,7 +39,7 @@ impl EmailService {
         template_path: &str,
         data: &Value,
     ) -> Result<()> {
-        let mut body = self.load_template(template_path);
+        let mut body = self.load_template(template_path)?;
 
         for (key, value) in data.as_object().unwrap() {
             let placeholder = format!("{{{{{}}}}}", key);
@@ -52,6 +52,8 @@ impl EmailService {
             .subject(subject)
             .header(lettre::message::header::ContentType::TEXT_HTML)
             .body(body)?;
+
+        self.mailer.send(&email);
 
         Ok(())
     }
