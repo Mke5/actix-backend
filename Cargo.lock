@@ -17,6 +17,8 @@ dependencies = [
  "eyre",
  "futures-util",
  "jsonwebtoken",
+ "password-hash",
+ "rand_core 0.6.4",
  "serde",
  "serde_json",
  "sqlx",
@@ -30,6 +32,7 @@ dependencies = [
  "utoipa-swagger-ui",
  "uuid",
  "validator",
+ "validator_derive",
 ]
 
 [[package]]
