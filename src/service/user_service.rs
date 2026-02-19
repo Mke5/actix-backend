@@ -331,4 +331,41 @@ impl UserService {
             }
         }
     }
+
+    pub async fn handle_forgot_password(&self, email: &str) -> Result<()> {
+        let email = email.trim().to_lowercase();
+
+        if email.is_empty() {
+            return Err(eyre::eyre!("Email is required!"));
+        }
+
+        let user: Option<User> =
+            sqlx::query_as::<_, User>(r#"SELECT * FROM users WHERE email = $1"#)
+                .bind(&email)
+                .fetch_optional(&self.pool)
+                .await
+                .wrap_err("Failed to fetch user")?;
+        if user.is_none() {
+            return Err(eyre::eyre!("User not found"));
+        }
+        let user = user.unwrap();
+        self.send_otp(&user.name, &user.email)
+            .await
+            .wrap_err("Failed to send OTP")?;
+
+        Ok(())
+    }
+
+    pub async fn verify_forgot_password_otp(&self, email: &str, otp: &str) -> Result<()> {
+        let email = email.trim().to_lowercase();
+        let otp = otp.trim();
+        if email.is_empty() || otp.is_empty() {
+            return Err(eyre::eyre!("Email and OTP are required!"));
+        }
+
+        self.verify_otp(&email, &otp)
+            .await
+            .wrap_err("Failed to verify OTP")?;
+        Ok(())
+    }
 }
