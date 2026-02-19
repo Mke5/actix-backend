@@ -8,7 +8,7 @@ use actix_web::{App, HttpServer, middleware::Logger, web};
 use color_eyre::Result;
 use tracing_subscriber::EnvFilter;
 
-use crate::service::handler::app_config;
+use crate::{config::routes, service::handler::app_config};
 
 #[actix_web::main]
 async fn main() -> Result<()> {
@@ -29,6 +29,7 @@ async fn main() -> Result<()> {
             .wrap(Logger::default())
             .app_data(web::Data::new(pool.clone()))
             .configure(app_config)
+            .configure(routes)
     })
     .bind(format!("{}:{}", config.host, config.port))?
     .run()
