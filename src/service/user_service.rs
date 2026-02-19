@@ -1,9 +1,8 @@
-use std::time::Duration;
-
+use chrono::Duration;
 use chrono::Utc;
-use eyre::Ok;
 use eyre::Result;
 use eyre::WrapErr;
+use sqlx::Postgres;
 use sqlx::{Error as SqlxError, PgPool};
 use uuid::Uuid;
 
@@ -14,6 +13,11 @@ use crate::{
     config::crypto::CryptoService,
     models::user::{NewUser, User},
 };
+
+pub struct AuthTokens {
+    pub access_token: String,
+    pub refresh_token: String,
+}
 
 pub struct UserService {
     pub pool: PgPool,
@@ -28,6 +32,12 @@ impl UserService {
             pool,
             crypto,
             platform_name: config.platform_name.clone(),
+            email_service: EmailService::new(
+                &config.smtp_server,
+                &config.smtp_username,
+                &config.smtp_password,
+                &config.platform_name,
+            ),
         }
     }
 
@@ -81,7 +91,7 @@ impl UserService {
         let mut tx = self.pool.begin().await?;
         let record: Option<OtpCode> =
             sqlx::query_as::<Postgres, OtpCode>("SELECT * FROM otp_codes WHERE email = $1")
-                .bind(email)
+                .bind(&email)
                 .fetch_optional(&mut *tx)
                 .await
                 .wrap_err("Failed to fetch OTP")?;
@@ -89,7 +99,7 @@ impl UserService {
             Some(r) => r,
             None => {
                 tx.rollback().await?;
-                return Err(eyre!("Invalid or expired OTP!"));
+                return Err(eyre::eyre!("Invalid or expired OTP!"));
             }
         };
         let now = Utc::now();
@@ -100,14 +110,14 @@ impl UserService {
                 .execute(&mut *tx)
                 .await?;
             tx.commit().await?;
-            return Err(eyre!("Invalid or expired OTP!"));
+            return Err(eyre::eyre!("Invalid or expired OTP!"));
         };
 
         // Active lock check (30 min lock using spam_locked_until)
         if let Some(lock_until) = otp.spam_locked_until {
             if lock_until > now {
                 tx.rollback().await?;
-                return Err(eyre!("Too many failed attempts. Try again later."));
+                return Err(eyre::eyre!("Too many failed attempts. Try again later."));
             }
         }
 
@@ -129,13 +139,13 @@ impl UserService {
                             spam_locked_until = NOW() + INTERVAL '30 minutes'
                         WHERE email = $2
                     "#,
-                    new_attempts,
+                    otp.attempts,
                     email
                 )
                 .execute(&mut *tx)
                 .await?;
                 tx.commit().await?;
-                return Err(eyre!(
+                return Err(eyre::eyre!(
                     "Too many failed attempts. Your account is locked for 30 minutes!"
                 ));
             }
@@ -148,7 +158,7 @@ impl UserService {
             .execute(&mut *tx)
             .await?;
             tx.commit().await?;
-            return Err(eyre!("Invalid OTP!"));
+            return Err(eyre::eyre!("Invalid OTP!"));
         }
 
         // Correct OTP → cleanup
@@ -164,7 +174,7 @@ impl UserService {
         let mut tx = self.pool.begin().await?;
         let record: Option<OtpCode> =
             sqlx::query_as::<_, OtpCode>("SELECT * FROM otp_codes WHERE email = $1")
-                .bind(email)
+                .bind(&email)
                 .fetch_optional(&mut *tx)
                 .await?;
         let now = Utc::now();
@@ -173,7 +183,7 @@ impl UserService {
             if let Some(lock_until) = otp.spam_locked_until {
                 if lock_until > now {
                     tx.rollback().await?;
-                    return Err(eyre!(
+                    return Err(eyre::eyre!(
                         "Too many requests. Please wait 1 hour before requesting again."
                     ));
                 }
@@ -200,7 +210,7 @@ impl UserService {
                 .execute(&mut *tx)
                 .await?;
                 tx.commit().await?;
-                return Err(eyre!(
+                return Err(eyre::eyre!(
                     "Too many requests. Please wait 1 hour before requesting again."
                 ));
             }
@@ -366,6 +376,90 @@ impl UserService {
         self.verify_otp(&email, &otp)
             .await
             .wrap_err("Failed to verify OTP")?;
+
         Ok(())
+    }
+
+    pub async fn get_user_by_email(&self, email: &str) -> Result<User> {
+        let email = email.trim().to_lowercase();
+        let user: Option<User> =
+            sqlx::query_as::<_, User>(r#"SELECT * FROM users WHERE email = $1"#)
+                .bind(&email)
+                .fetch_optional(&self.pool)
+                .await
+                .wrap_err("Failed to fetch user")?;
+        if user.is_none() {
+            return Err(eyre::eyre!("User not found"));
+        }
+        Ok(user.unwrap())
+    }
+
+    pub async fn login(&self, email: &str, password: &str) -> Result<AuthTokens> {
+        let email = email.trim().to_lowercase();
+        if email.is_empty() || password.is_empty() {
+            return Err(eyre::eyre!("Email and password are required!"));
+        }
+
+        let user = self.get_user_by_email(&email).await?;
+        if user.is_banned {
+            return Err(eyre::eyre!("User is banned"));
+        }
+
+        let is_valid = self
+            .crypto
+            .verify_password(password, &user.password_hash)
+            .wrap_err("Password verification failed")?;
+        if !is_valid {
+            return Err(eyre::eyre!("Invalid credentials"));
+        }
+
+        let role = user.role.to_str().to_string();
+
+        let access_token = self
+            .crypto
+            .generate_access_token(user.id, &user.email, role.clone())?;
+        let refresh_token =
+            self.crypto
+                .generate_refresh_token(user.id, &user.email, role.clone())?;
+
+        Ok(AuthTokens {
+            access_token,
+            refresh_token,
+        })
+    }
+
+    pub async fn refresh_token(&self, refresh_token: &str) -> Result<AuthTokens> {
+        if refresh_token.trim().is_empty() {
+            return Err(eyre::eyre!("Unauthorized! No refresh token"));
+        }
+
+        let claims = self
+            .crypto
+            .verify_refresh_token(refresh_token)
+            .wrap_err("Invalid refresh token")?;
+        let user = self
+            .get_user_by_email(&claims.email)
+            .await
+            .wrap_err("User not found")?;
+
+        if user.is_banned {
+            return Err(eyre::eyre!("Account is banned"));
+        }
+
+        let new_access_token = self.crypto.generate_access_token(
+            user.id,
+            &user.email,
+            user.role.to_str().to_string(),
+        )?;
+        let new_refresh_token = self.crypto.generate_refresh_token(
+            user.id,
+            &user.email,
+            user.role.to_str().to_string(),
+        )?;
+
+        Ok(AuthTokens {
+            access_token: new_access_token,
+            refresh_token: new_refresh_token,
+        })
     }
 }

@@ -1,13 +1,28 @@
+use argon2::password_hash::rand_core::OsRng;
 use argon2::password_hash::{PasswordHasher, PasswordVerifier, SaltString};
 use argon2::{Algorithm, Argon2, Params, PasswordHash, Version};
+use chrono::{Duration, Utc};
 use color_eyre::Result;
-use rand_core::OsRng;
+use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, decode, encode};
+use rand::{Rng, thread_rng};
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tracing::instrument;
+use uuid::Uuid;
 
 #[derive(Debug, Clone)]
 pub struct CryptoService {
-    pub key: Arc<String>,
+    pub access_key: Arc<String>,
+    pub refresh_key: Arc<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TokenClaims {
+    pub sub: Uuid,     // user id
+    pub email: String, // user email
+    pub role: String,  // user role
+    pub exp: usize,    // expiration time
+    pub iat: usize,    // issued at time
 }
 
 impl CryptoService {
@@ -51,7 +66,75 @@ impl CryptoService {
     }
 
     pub fn generate_otp_code(&self) -> Result<String> {
-        let code = rand::thread_rng().gen_range(100_000..=999_999);
+        let mut rng = thread_rng();
+        let code = rng.gen_range(100_000..=999_999);
         Ok(code.to_string())
+    }
+
+    pub fn generate_access_token(
+        &self,
+        user_id: Uuid,
+        email: &str,
+        role: String,
+    ) -> Result<String> {
+        let now = Utc::now();
+
+        let claims = TokenClaims {
+            sub: user_id,
+            role,
+            email: email.to_string(),
+            iat: now.timestamp() as usize,
+            exp: (now + Duration::minutes(15)).timestamp() as usize,
+        };
+        let token = encode(
+            &Header::default(),
+            &claims,
+            &EncodingKey::from_secret(self.access_key.as_bytes()),
+        )?;
+        Ok(token)
+    }
+
+    pub fn generate_refresh_token(
+        &self,
+        user_id: Uuid,
+        email: &str,
+        role: String,
+    ) -> Result<String> {
+        let now = Utc::now();
+
+        let claims = TokenClaims {
+            sub: user_id,
+            email: email.to_string(),
+            role,
+            iat: now.timestamp() as usize,
+            exp: (now + Duration::days(7)).timestamp() as usize,
+        };
+        let token = encode(
+            &Header::default(),
+            &claims,
+            &EncodingKey::from_secret(self.refresh_key.as_bytes()),
+        )?;
+
+        Ok(token)
+    }
+
+    pub fn verify_access_token(&self, token: &str) -> Result<TokenClaims> {
+        let data = decode::<TokenClaims>(
+            token,
+            &DecodingKey::from_secret(self.access_key.as_bytes()),
+            &Validation::default(),
+        )?;
+
+        Ok(data.claims)
+    }
+
+    pub fn verify_refresh_token(&self, token: &str) -> Result<TokenClaims> {
+        let data = decode::<TokenClaims>(
+            token,
+            &DecodingKey::from_secret(self.refresh_key.as_bytes()),
+            &Validation::default(),
+        )?;
+
+        Ok(data.claims)
     }
 }

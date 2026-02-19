@@ -28,7 +28,7 @@ pub struct User {
     pub email: String,
 
     #[serde(skip_serializing)] //select false on user sql queries for the password hash
-    pub password_hash: Option<String>,
+    pub password_hash: String,
     pub role: UserRole,
     pub phone_number: Option<String>,
 

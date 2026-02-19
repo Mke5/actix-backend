@@ -27,7 +27,7 @@ impl EmailService {
         }
     }
 
-    pub fn load_template(&self, path: &str) -> Result<(String)> {
+    pub fn load_template(&self, path: &str) -> Result<String> {
         let template = fs::read_to_string(path)?;
         Ok(template)
     }

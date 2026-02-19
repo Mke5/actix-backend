@@ -13,6 +13,12 @@ pub struct Config {
     pub port: u16,
     pub database_url: String,
     pub platform_name: String,
+    pub smtp_server: String,
+    pub smtp_port: u16,
+    pub smtp_username: String,
+    pub smtp_password: String,
+    pub access_token_secret: String,
+    pub refresh_token_secret: String,
 }
 
 impl Config {
