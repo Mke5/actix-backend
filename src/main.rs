@@ -1,4 +1,5 @@
 mod config;
+mod controllers;
 mod models;
 mod service;
 mod utils;

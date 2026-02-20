@@ -1,6 +1,5 @@
 use chrono::Duration;
 use chrono::Utc;
-use eyre::Ok;
 use eyre::Result;
 use eyre::WrapErr;
 use sqlx::Postgres;
@@ -339,17 +338,18 @@ impl UserService {
         .fetch_one(&self.pool)
         .await;
 
-        match result {
-            Ok(user) => Ok(user),
+        let user = match result {
+            Ok(user) => user,
             Err(err) => {
                 if let SqlxError::Database(db_err) = &err {
                     if db_err.constraint() == Some("idx_users_email") {
                         return Err(eyre::eyre!("Email already exists"));
                     }
                 }
-                Err(err).wrap_err("Failed to insert user")
+                return Err(err).wrap_err("Failed to insert user");
             }
-        }
+        };
+        Ok(user)
     }
 
     pub async fn handle_forgot_password(&self, email: &str) -> Result<()> {
