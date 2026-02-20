@@ -1,5 +1,6 @@
 use chrono::Duration;
 use chrono::Utc;
+use eyre::Ok;
 use eyre::Result;
 use eyre::WrapErr;
 use sqlx::Postgres;
@@ -165,7 +166,14 @@ impl UserService {
         sqlx::query!("DELETE FROM otp_codes WHERE email = $1", email)
             .execute(&mut *tx)
             .await?;
+        sqlx::query!(
+            "UPDATE users SET email_verified = true WHERE email = $1",
+            email
+        )
+        .execute(&mut *tx)
+        .await?;
         tx.commit().await?;
+
         Ok(())
     }
 
@@ -275,12 +283,14 @@ impl UserService {
             "platformName": self.platform_name
         });
 
-        self.email_service.send_email(
-            &email,
-            "Verify Your Email",
-            "./templates/otp_email.html",
-            &template_data,
-        );
+        self.email_service
+            .send_email(
+                &email,
+                "Verify Your Email",
+                "./templates/otp_email.html",
+                &template_data,
+            )
+            .await?;
 
         tx.commit().await?;
 
@@ -380,6 +390,20 @@ impl UserService {
         Ok(())
     }
 
+    pub async fn reset_password(&self, email: &str, otp: &str, new_password: &str) -> Result<()> {
+        self.verify_otp(email, otp).await?;
+        let hashed = self.crypto.hash_password(new_password)?;
+        sqlx::query!(
+            "UPDATE users SET password = $1 WHERE email = $2",
+            hashed,
+            email
+        )
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
+    }
+
     pub async fn get_user_by_email(&self, email: &str) -> Result<User> {
         let email = email.trim().to_lowercase();
         let user: Option<User> =
@@ -461,5 +485,14 @@ impl UserService {
             access_token: new_access_token,
             refresh_token: new_refresh_token,
         })
+    }
+
+    pub async fn resend_email_verification(&self, email: &str) -> Result<()> {
+        let user = self.get_user_by_email(email).await?;
+        if user.email_verified {
+            return Err(eyre::eyre!("Email already verified"));
+        }
+        self.send_otp(&user.name, &user.email).await?;
+        Ok(())
     }
 }
