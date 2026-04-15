@@ -3,42 +3,6 @@
 version = 4
 
 [[package]]
-name = "actix"
-version = "0.1.0"
-dependencies = [
- "actix-cors",
- "actix-web",
- "argon2",
- "async-trait",
- "chrono",
- "color-eyre",
- "config",
- "dotenv",
- "eyre",
- "futures-util",
- "jsonwebtoken",
- "lettre",
- "password-hash",
- "rand 0.8.5",
- "serde",
- "serde_json",
- "sqlx",
- "time",
- "tokio",
- "tracing",
- "tracing-futures",
- "tracing-log 0.1.4",
- "tracing-subscriber",
- "utoipa",
- "utoipa-rapidoc",
- "utoipa-redoc",
- "utoipa-swagger-ui",
- "uuid",
- "validator",
- "validator_derive",
-]
-
-[[package]]
 name = "actix-codec"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2337,6 +2301,42 @@ checksum = "796e8d2b6696392a43bea58116b667fb4c29727dc5abd27d6acf338bb4f688c7"
 dependencies = [
  "cfg-if",
  "ordered-multimap",
+]
+
+[[package]]
+name = "rustauth"
+version = "0.1.0"
+dependencies = [
+ "actix-cors",
+ "actix-web",
+ "argon2",
+ "async-trait",
+ "chrono",
+ "color-eyre",
+ "config",
+ "dotenv",
+ "eyre",
+ "futures-util",
+ "jsonwebtoken",
+ "lettre",
+ "password-hash",
+ "rand 0.8.5",
+ "serde",
+ "serde_json",
+ "sqlx",
+ "time",
+ "tokio",
+ "tracing",
+ "tracing-futures",
+ "tracing-log 0.1.4",
+ "tracing-subscriber",
+ "utoipa",
+ "utoipa-rapidoc",
+ "utoipa-redoc",
+ "utoipa-swagger-ui",
+ "uuid",
+ "validator",
+ "validator_derive",
 ]
 
 [[package]]
