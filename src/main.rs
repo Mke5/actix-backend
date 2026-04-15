@@ -1,14 +1,14 @@
 mod config;
 mod controllers;
 mod models;
-mod service;
+mod services;
 mod utils;
 
 use actix_web::{App, HttpServer, middleware::Logger, web};
 use color_eyre::Result;
 use tracing_subscriber::EnvFilter;
 
-use crate::{config::routes, service::handler::app_config};
+use crate::{config::routes, services::handler::app_config};
 
 #[actix_web::main]
 async fn main() -> Result<()> {

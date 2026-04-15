@@ -6,7 +6,7 @@ use time::Duration;
 
 use crate::{
     models::user::NewUser,
-    service::user_service::{self, UserService},
+    services::user_service::{self, UserService},
 };
 
 pub struct UserController {
