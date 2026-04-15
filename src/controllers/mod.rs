@@ -1,1 +1,3 @@
-pub mod user_controller;
+pub mod auth;
+pub mod mfa;
+pub mod sessions;
