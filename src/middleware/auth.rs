@@ -67,3 +67,25 @@ impl FromRequest for AuthenticatedUser {
         }
     }
 }
+
+#[derive(Debug, Clone)]
+pub struct AdminUser(pub AuthenticatedUser);
+
+impl FromRequest for AdminUser {
+    type Error = AppError;
+    type Future = Ready<Result<Self, Self::Error>>;
+
+    fn from_request(req: &HttpRequest, payload: &mut Payload) -> Self::Future {
+        // First extract the normal authenticated user
+        match AuthenticatedUser::from_request(req, payload).into_inner() {
+            Ok(user) => {
+                // Check role
+                match user.role {
+                    UserRole::Admin | UserRole::SuperAdmin => ready(Ok(AdminUser(user))),
+                    _ => ready(Err(AppError::Forbidden("Admin access required".into()))),
+                }
+            }
+            Err(e) => ready(Err(e)),
+        }
+    }
+}
