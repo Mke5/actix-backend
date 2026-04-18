@@ -1,11 +1,12 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
+use utoipa::ToSchema;
 use uuid::Uuid;
 
 /// Session represents an active user session with device and location information.
 /// Used for managing multiple login sessions and device tracking.
-#[derive(Debug, Clone, FromRow, Serialize, Deserialize)]
+#[derive(Debug, Clone, FromRow, Serialize, Deserialize, ToSchema)]
 pub struct Session {
     /// Unique session identifier
     pub id: Uuid,

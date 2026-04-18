@@ -8,7 +8,8 @@ use crate::{
     services::AppState,
     utils::errors::AppError,
     utils::totp::{
-        generate_backup_codes, generate_totp_secret, generate_totp_uri, verify_totp_code,
+        generate_backup_codes as generate_totp_backup_codes, generate_totp_secret,
+        generate_totp_uri, verify_totp_code,
     },
 };
 
@@ -50,10 +51,7 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
             .route("/totp/confirm", web::post().to(confirm_totp))
             .route("/totp/disable", web::post().to(disable_totp))
             .route("/totp/verify", web::post().to(verify_totp))
-            .route(
-                "/backup-codes",
-                web::post().to(generate_backup_codes_handler),
-            )
+            .route("/backup-codes", web::post().to(generate_backup_codes))
             .route("/backup-codes", web::get().to(view_backup_codes)),
     );
 }
@@ -138,7 +136,7 @@ pub async fn confirm_totp(
     }
 
     // Generate backup codes for account recovery
-    let backup_codes = generate_backup_codes(10);
+    let backup_codes = generate_totp_backup_codes(10);
     let codes_json = serde_json::to_value(&backup_codes)
         .map_err(|_| AppError::Internal("Failed to serialize backup codes".into()))?;
 
@@ -258,7 +256,7 @@ pub async fn verify_totp(
         (status = 400, description = "MFA not enabled"),
     )
 )]
-pub async fn generate_backup_codes_handler(
+pub async fn generate_backup_codes(
     state: web::Data<AppState>,
     auth_user: AuthenticatedUser,
 ) -> Result<HttpResponse, AppError> {
@@ -270,7 +268,7 @@ pub async fn generate_backup_codes_handler(
         ));
     }
 
-    let codes = generate_backup_codes(10);
+    let codes = generate_totp_backup_codes(10);
     let codes_json = serde_json::to_value(&codes)
         .map_err(|_| AppError::Internal("Failed to serialize backup codes".into()))?;
 
